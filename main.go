@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	DIR        = "./www"
+	DIR         = "./www"
 	PORT uint16 = 80
 )
 
@@ -16,22 +16,19 @@ func init() {
 	// Set PORT from env params
 	port := os.Getenv("PORT");
 	if port != "" {
-		p, err := strconv.Atoi(port);
-		if err == nil && p > 0 {
+		if p, err := strconv.Atoi(port); err == nil && p > 0 {
 			PORT = uint16(p)
 		}
 	}
 	// Set DIR from env params
-	dir := os.Getenv("DIR");
-	if dir != "" {
+	if dir := os.Getenv("DIR"); dir != "" {
 		DIR = dir
 	}
 }
 
 func main() {
-	// Run eb server
-	err := webserver.Serve(DIR, PORT);
-	if err != nil {
+	// Run web server
+	if err := webserver.Serve(DIR, PORT); err != nil {
 		log.Fatal()
 	}
 }
