@@ -13,14 +13,14 @@ const (
 	ErrorUnknownDriver = Error("Unknown cache driver")
 )
 
-type Cache interface {
+type Cacher interface {
 	Set(k []byte, v []byte) error
 	Get(k []byte) ([]byte, error)
 	Delete(k []byte) error
 	Close() error
 }
 
-func New(t DriverType) (Cache, error) {
+func New(t DriverType) (Cacher, error) {
 	switch t {
 	case TypeBadgerDB:
 		return newBadgerDBCache()
