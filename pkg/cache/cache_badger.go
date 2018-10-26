@@ -1,8 +1,9 @@
 package cache
 
 import (
-	"github.com/dgraph-io/badger"
 	"log"
+
+	"github.com/dgraph-io/badger"
 )
 
 type BadgerDBCache struct {
