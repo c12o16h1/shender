@@ -3,18 +3,16 @@ package config
 import (
 	"os"
 	"strconv"
+
+	"github.com/c12o16h1/shender/pkg/models"
 )
 
 const (
-	DEFAULT_PORT       uint16 = 80
-	DEFAULT_DIR        string = "./www"
-	DEFAULT_CACHE_TYPE string = "badgerdb"
+	DEFAULT_PORT                 uint16 = 80
+	DEFAULT_DIR                  string = "./www"
+	DEFAULT_CACHE_TYPE           string = "badgerdb"
+	DEFAULT_RENDER_WORKERS_COUNT uint   = 4
 )
-
-// TODO use JSON from server, not ENV
-type Configurator interface {
-	Configure()
-}
 
 // As this would be global config for "microservices" in one app,
 // we should operate with pointers, not values.
@@ -23,18 +21,20 @@ type Configurator interface {
 // we don't want to kill "microservice" just to renew config
 // So, this is "good" global var
 type Config struct {
-	Configurator
-	Main  *MainConfig  `json:"main"`
-	Cache *CacheConfig `json:"cache"`
+	models.Configurator
+	Main   *MainConfig   `json:"main"`
+	Cache  *CacheConfig  `json:"cache"`
+	Render *RenderConfig `json:"render"`
 }
 
 func (c *Config) Configure() {
 	c.Main.Configure()
 	c.Cache.Configure()
+	c.Render.Configure()
 }
 
 type MainConfig struct {
-	Configurator
+	models.Configurator
 	Port uint16 `json:"port"`
 	Dir  string `json:"dir"`
 }
@@ -55,7 +55,7 @@ func (c *MainConfig) Configure() {
 }
 
 type CacheConfig struct {
-	Configurator
+	models.Configurator
 	Type string `json:"type"`
 	Host string `json:"host"`
 	Port string `json:"port"`
@@ -70,10 +70,25 @@ func (c *CacheConfig) Configure() {
 	}
 }
 
+type RenderConfig struct {
+	models.Configurator
+	WorkersCount uint `json:"workers_count"` // desired count of workers
+}
+
+func (c *RenderConfig) Configure() {
+	c.WorkersCount = DEFAULT_RENDER_WORKERS_COUNT
+	if count := os.Getenv("RENDER_WORKERS_COUNT"); count != "" {
+		if cnt, err := strconv.Atoi(count); err == nil && cnt > 0 {
+			c.WorkersCount = uint(cnt)
+		}
+	}
+}
+
 func New() *Config {
 	cfg := Config{
-		Main:  &MainConfig{},
-		Cache: &CacheConfig{},
+		Main:   &MainConfig{},
+		Cache:  &CacheConfig{},
+		Render: &RenderConfig{},
 	}
 	cfg.Configure()
 	return &cfg
