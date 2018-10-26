@@ -7,7 +7,7 @@ import (
 	"github.com/c12o16h1/shender/pkg/cache"
 )
 
-func Serve(dir string, port uint16, cache cache.Cache) error {
+func Serve(dir string, port uint16, cache cache.Cacher) error {
 	fs := fileserver.New(fileserver.Options{})
 	http.Handle("/", fs.Serve(http.Dir(dir)))
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)

@@ -46,7 +46,7 @@ func (b *BadgerDBCache) Close() error {
 	return b.db.Close()
 }
 
-func newBadgerDBCache() (Cache, error) {
+func newBadgerDBCache() (Cacher, error) {
 	opts := badger.DefaultOptions
 	opts.Dir = "./cache"
 	opts.ValueDir = "./cache"
