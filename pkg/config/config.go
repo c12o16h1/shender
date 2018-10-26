@@ -10,8 +10,12 @@ import (
 const (
 	DEFAULT_PORT                 uint16 = 80
 	DEFAULT_DIR                  string = "./www"
-	DEFAULT_CACHE_TYPE           string = "badgerdb"
-	DEFAULT_RENDER_WORKERS_COUNT uint   = 4
+	DEFAULT_INCOMING_QUEUE_LIMIT uint   = 10
+	DEFAULT_OUTGOING_QUEUE_LIMIT uint   = 100
+
+	DEFAULT_CACHE_TYPE string = "badgerdb"
+
+	DEFAULT_RENDER_WORKERS_COUNT uint = 4
 )
 
 // As this would be global config for "microservices" in one app,
@@ -35,22 +39,37 @@ func (c *Config) Configure() {
 
 type MainConfig struct {
 	models.Configurator
-	Port uint16 `json:"port"`
-	Dir  string `json:"dir"`
+	Port               uint16 `json:"port"`
+	Dir                string `json:"dir"`
+	IncomingQueueLimit uint   `json:"incoming_queue_limit"`
+	OutgoingQueueLimit uint   `json:"outgoing_queue_limit"`
 }
 
 func (c *MainConfig) Configure() {
 	c.Port = DEFAULT_PORT
 	c.Dir = DEFAULT_DIR
+	c.IncomingQueueLimit = DEFAULT_INCOMING_QUEUE_LIMIT
+	c.OutgoingQueueLimit = DEFAULT_OUTGOING_QUEUE_LIMIT
 
 	if port := os.Getenv("PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil && p > 0 {
 			c.Port = uint16(p)
 		}
 	}
-	// Set DIR from env params
 	if dir := os.Getenv("DIR"); dir != "" {
 		c.Dir = dir
+	}
+
+	if iql := os.Getenv("DEFAULT_INCOMING_QUEUE_LIMIT"); iql != "" {
+		if l, err := strconv.Atoi(iql); err == nil && l > 0 {
+			c.IncomingQueueLimit = uint(l)
+		}
+	}
+
+	if oql := os.Getenv("DEFAULT_OUTGOING_QUEUE_LIMIT"); oql != "" {
+		if l, err := strconv.Atoi(oql); err == nil && l > 0 {
+			c.IncomingQueueLimit = uint(l)
+		}
 	}
 }
 

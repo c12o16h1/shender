@@ -17,19 +17,23 @@ const (
 	WORKERS_ENSURE_TIMEOUT time.Duration = 10
 	WORKER_MAX_LIFETIME    time.Duration = 3600
 
-	JOB_MAX_LIFETIME time.Duration = 60
+	HANDLER_BUSY_TIMEOUT time.Duration = 1
+	HANDLER_MAX_LIFETIME time.Duration = 60
+
+	ERROR_NO_FREE_WORKER models.Error = "No free Worker"
 )
 
 type State struct {
-	Workers *workersStateMap
+	Workers     *workersStateMap
+	JobHandlers uint
 }
 
-func Run(ch <-chan []models.Job, cfg *config.RenderConfig) error {
+func Run(chJobs <-chan models.Job, chRes chan models.JobResult, cfg *config.RenderConfig) error {
 	wg := &sync.WaitGroup{}
 	mtx := &sync.Mutex{}
 	state := &State{}
 
-	// Ensure workers about each WORKERS_ENSURE_TIMEOUT seconds
+	// Ensure workers about eachJobs WORKERS_ENSURE_TIMEOUT seconds
 	go func(wg *sync.WaitGroup, mtx *sync.Mutex, cfg *config.RenderConfig, state *State) {
 		for {
 			// Add it there because we don't care if this function may die,
@@ -49,12 +53,10 @@ func Run(ch <-chan []models.Job, cfg *config.RenderConfig) error {
 
 	//
 
-	for
-	cfg.WorkersCount
-
-	for i := uint(0); i < cfg.WorkersCount; i++ {
-		go Render("https://www.contextu.com")
+	for state.JobHandlers < cfg.WorkersCount {
+		go handleJob(chJobs, chRes, wg, mtx, state)
 	}
+
 	return nil
 }
 
@@ -106,6 +108,62 @@ func ensureWorkers(wg *sync.WaitGroup, mtx *sync.Mutex, cfg *config.RenderConfig
 	wg.Done()
 }
 
-func handleJobs(wg *sync.WaitGroup, mtx *sync.Mutex, cfg *config.RenderConfig, state *State) {
+func handleJob(chJobs <-chan models.Job, chRes chan models.JobResult, wg *sync.WaitGroup, mtx *sync.Mutex, state *State) {
+	// Apply state: Increase job handlers count
+	mtx.Lock()
+	state.JobHandlers++
+	mtx.Unlock()
 
+	defer func(wg *sync.WaitGroup, mtx *sync.Mutex) {
+		// Apply state: Decrease job handlers count
+		mtx.Lock()
+		state.JobHandlers++
+		mtx.Unlock()
+	}(wg, mtx)
+
+	// Obtain free worker or sleep and quit
+	worker, err := getWorker(state, mtx)
+	if err != nil {
+		time.Sleep(1 * HANDLER_BUSY_TIMEOUT)
+	}
+	defer func(mtx *sync.Mutex, state *State) {
+		mtx.Lock()
+		(*state.Workers)[worker] = &workersState{State: stateFree}
+		mtx.Unlock()
+	}(mtx, state)
+
+	// Get and do job
+	job := <-chJobs
+	res := models.JobResult{
+		Job:    job,
+		Status: models.JobFailed, // let it be failed if not opposite
+	}
+	defer func(ch chan models.JobResult) {
+		ch <- res
+	}(chRes)
+	body, err := processJob(job, worker)
+	if err == nil {
+		res.Status = models.JobOk
+		res.HTML = body
+	}
+}
+
+func processJob(job models.Job, w *Worker) (string, error) {
+	body, err := w.Render(job.Url)
+	if err != nil {
+		return "", err
+	}
+	return body, nil
+}
+
+func getWorker(state *State, mtx *sync.Mutex) (*Worker, error) {
+	for w, s := range *state.Workers {
+		if s.State == stateFree, stateNew {
+			mtx.Lock()
+			s.State = stateBusy
+			mtx.Unlock()
+			return w, nil
+		}
+	}
+	return nil, ERROR_NO_FREE_WORKER
 }
