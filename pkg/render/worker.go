@@ -11,6 +11,7 @@ import (
 	"github.com/c12o16h1/shender/pkg/models"
 )
 
+// Worker is a wrapper for headless Chrome instance
 type Worker struct {
 	models.Renderer
 	models.Closer
@@ -18,6 +19,7 @@ type Worker struct {
 	context *context.Context
 }
 
+// Spawn new worker instance
 func NewWorker() (*Worker, error) {
 	ctxt, cancel := context.WithCancel(context.Background())
 	c, err := chromedp.New(ctxt, chromedp.WithLog(log.Printf), chromedp.WithRunnerOptions(
@@ -36,6 +38,7 @@ func NewWorker() (*Worker, error) {
 	return &w, nil
 }
 
+// Very basic worker function to get page source
 func (w *Worker) Render(url string) (string, error) {
 	var body string
 	w.worker.Run(w.context, renderTasks(url, &body))
