@@ -15,7 +15,6 @@ const (
 
 	DEFAULT_CACHE_TYPE string = "badgerdb"
 
-	DEFAULT_RENDER_WORKERS_COUNT uint = 4
 )
 
 // As this would be global config for "microservices" in one app,
@@ -26,15 +25,13 @@ const (
 // So, this is "good" global var
 type Config struct {
 	models.Configurator
-	Main   *MainConfig   `json:"main"`
-	Cache  *CacheConfig  `json:"cache"`
-	Render *RenderConfig `json:"render"`
+	Main  *MainConfig  `json:"main"`
+	Cache *CacheConfig `json:"cache"`
 }
 
 func (c *Config) Configure() {
 	c.Main.Configure()
 	c.Cache.Configure()
-	c.Render.Configure()
 }
 
 type MainConfig struct {
@@ -89,25 +86,10 @@ func (c *CacheConfig) Configure() {
 	}
 }
 
-type RenderConfig struct {
-	models.Configurator
-	WorkersCount uint `json:"workers_count"` // desired count of workers
-}
-
-func (c *RenderConfig) Configure() {
-	c.WorkersCount = DEFAULT_RENDER_WORKERS_COUNT
-	if count := os.Getenv("RENDER_WORKERS_COUNT"); count != "" {
-		if cnt, err := strconv.Atoi(count); err == nil && cnt > 0 {
-			c.WorkersCount = uint(cnt)
-		}
-	}
-}
-
 func New() *Config {
 	cfg := Config{
-		Main:   &MainConfig{},
-		Cache:  &CacheConfig{},
-		Render: &RenderConfig{},
+		Main:  &MainConfig{},
+		Cache: &CacheConfig{},
 	}
 	cfg.Configure()
 	return &cfg

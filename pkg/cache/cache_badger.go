@@ -43,8 +43,8 @@ func (b *BadgerDBCache) Delete(k []byte) error {
 	return err
 }
 
-func (b *BadgerDBCache) Close() error {
-	return b.db.Close()
+func (b *BadgerDBCache) Close() {
+	b.db.Close()
 }
 
 func newBadgerDBCache() (Cacher, error) {

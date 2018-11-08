@@ -1,31 +1,28 @@
-package render
+package main
 
 import (
-	"log"
-	"time"
 	"context"
-
-	"github.com/chromedp/chromedp/runner"
-	"github.com/chromedp/chromedp"
+	"os"
+	"time"
 
 	"github.com/c12o16h1/shender/pkg/models"
+
+	"github.com/chromedp/chromedp"
 )
 
 // Worker is a wrapper for headless Chrome instance
 type Worker struct {
 	models.Renderer
-	models.Closer
-	worker  *chromedp.CDP
+	worker  *chromedp.Pool
 	context *context.Context
+	cancel  *context.CancelFunc
+	created time.Time
 }
 
 // Spawn new worker instance
 func NewWorker() (*Worker, error) {
 	ctxt, cancel := context.WithCancel(context.Background())
-	c, err := chromedp.New(ctxt, chromedp.WithLog(log.Printf), chromedp.WithRunnerOptions(
-		runner.Flag("headless", false),
-		runner.Flag("disable-gpu", false),
-	))
+	c, err := chromedp.NewPool()
 	if err != nil {
 		return nil, err
 	}
@@ -33,16 +30,32 @@ func NewWorker() (*Worker, error) {
 	w := Worker{
 		worker:  c,
 		context: &ctxt,
+		cancel:  &cancel,
+		created: time.Now(),
 	}
-	w.Close = cancel
 	return &w, nil
 }
 
 // Very basic worker function to get page source
-func (w *Worker) Render(url string) (string, error) {
-	var body string
-	w.worker.Run(w.context, renderTasks(url, &body))
-	return body, nil
+func (w *Worker) Close(sig int) {
+	w.worker.Shutdown()
+	os.Exit(sig)
+}
+
+// Very basic worker function to get page source
+func (w *Worker) Render(url string, html *string) error {
+	c, err := w.worker.Allocate(*w.context)
+	if err != nil {
+		return err
+	}
+	defer c.Release()
+	c.Run(*w.context, renderTasks(url, html))
+	return nil
+}
+
+// Check that worker is alive
+func (w *Worker) Heartbeat() string {
+	return models.OK
 }
 
 func renderTasks(url string, body *string) chromedp.Tasks {
