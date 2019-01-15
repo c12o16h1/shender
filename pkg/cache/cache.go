@@ -1,27 +1,26 @@
 package cache
 
-type Error string
-
-func (e Error) Error() string { return string(e) }
-
-type DriverType string
-
-const (
-	TypeBadgerDB DriverType = "badgerdb"
-	//TypeRedis    DriverType = "redis"
-
-	ErrorUnknownDriver = Error("Unknown cache driver")
+import (
+	"github.com/c12o16h1/shender/pkg/config"
+	"github.com/c12o16h1/shender/pkg/models"
 )
 
-type Cache interface {
+const (
+	TypeBadgerDB = "badgerdb"
+	//TypeRedis  = "redis"
+
+	ErrorUnknownDriver = models.Error("Unknown cache driver")
+)
+
+type Cacher interface {
 	Set(k []byte, v []byte) error
 	Get(k []byte) ([]byte, error)
 	Delete(k []byte) error
-	Close() error
+	models.Closer
 }
 
-func New(t DriverType) (Cache, error) {
-	switch t {
+func New(config *config.CacheConfig) (Cacher, error) {
+	switch config.Type {
 	case TypeBadgerDB:
 		return newBadgerDBCache()
 	}

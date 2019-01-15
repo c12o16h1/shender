@@ -1,8 +1,9 @@
 package cache
 
 import (
-	"github.com/dgraph-io/badger"
 	"log"
+
+	"github.com/dgraph-io/badger"
 )
 
 type BadgerDBCache struct {
@@ -42,11 +43,11 @@ func (b *BadgerDBCache) Delete(k []byte) error {
 	return err
 }
 
-func (b *BadgerDBCache) Close() error {
-	return b.db.Close()
+func (b *BadgerDBCache) Close() {
+	b.db.Close()
 }
 
-func newBadgerDBCache() (Cache, error) {
+func newBadgerDBCache() (Cacher, error) {
 	opts := badger.DefaultOptions
 	opts.Dir = "./cache"
 	opts.ValueDir = "./cache"

@@ -3,6 +3,9 @@
     <module name="shender" />
     <working_directory value="$PROJECT_DIR$/" />
     <go_parameters value="-i" />
+    <envs>
+      <env name="PORT" value="8080" />
+    </envs>
     <kind value="PACKAGE" />
     <filePath value="$PROJECT_DIR$/" />
     <package value="github.com/c12o16h1/shender" />
