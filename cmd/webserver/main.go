@@ -24,18 +24,35 @@ func main() {
 	}
 	defer cacher.Close()
 
+	// Handler to serve files (common case)
+	fsHandler := fileserver.New(fileserver.Options{}).Serve(http.Dir(cfg.Main.Dir))
+
+	//Handler to serve cache (for SE bots)
+	cacheHandler := NewCacheHandler(&cacher)
+
 	// Web server
 	// Is a fast Go web-server with caching
 	// Which handle http requests and respond with static content (aka nginx),
+
 	// but for SE bots return cached (rendered) page content
-	if err := serve(cfg.Main, cacher); err != nil {
+	if err := serve(cfg.Main, cacheHandler, fsHandler); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
-func serve(config *config.MainConfig, cache cache.Cacher) error {
-	fs := fileserver.New(fileserver.Options{})
-	http.Handle("/", fs.Serve(http.Dir(config.Dir)))
+func serve(config *config.MainConfig, handler CacheHandler, fsHandler http.Handler) error {
+	http.Handle("/", pickHandler(handler, fsHandler))
 	return http.ListenAndServe(fmt.Sprintf(":%d", config.Port), nil)
+}
+
+func pickHandler(cache CacheHandler, fs http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If request fits requirements - process them with cache handler
+		if cache.Verify(r) {
+			cache.ServeHTTP(w, r)
+			return
+		}
+		// Otherwise process with file handler
+		fs.ServeHTTP(w, r)
+	})
 }
