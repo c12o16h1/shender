@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/yosssi/go-fileserver"
-
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/config"
 )
@@ -25,32 +23,38 @@ func main() {
 	defer cacher.Close()
 
 	// Handler to serve files (common case)
-	fsHandler := fileserver.New(fileserver.Options{}).Serve(http.Dir(cfg.Main.Dir))
-
-	//Handler to serve cache (for SE bots)
-	cacheHandler := NewCacheHandler(&cacher)
+	fsHandler := http.FileServer(http.Dir(cfg.Main.Dir))
 
 	// Web server
 	// Is a fast Go web-server with caching
 	// Which handle http requests and respond with static content (aka nginx),
 
 	// but for SE bots return cached (rendered) page content
-	if err := serve(cfg.Main, cacheHandler, fsHandler); err != nil {
+	if err := serve(cfg.Main, cacher, fsHandler); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func serve(config *config.MainConfig, handler CacheHandler, fsHandler http.Handler) error {
-	http.Handle("/", pickHandler(handler, fsHandler))
+func serve(config *config.MainConfig, cacher cache.Cacher, fsHandler http.Handler) error {
+	http.Handle("/", pickHandler(cacher, fsHandler))
 	return http.ListenAndServe(fmt.Sprintf(":%d", config.Port), nil)
 }
 
-func pickHandler(cache CacheHandler, fs http.Handler) http.Handler {
+func pickHandler(cacher cache.Cacher, fs http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// If request fits requirements - process them with cache handler
-		if cache.Verify(r) {
-			cache.ServeHTTP(w, r)
-			return
+		if verifiedRequest(r) {
+			// Only if we have something in cache - show it and return
+			if body, err := isCached(cacher, r); err != nil {
+				w.Write(body)
+				// Spawn goroutine to enqueue crawling
+				go func(cacher cache.Cacher, url string) {
+					if err := enqueue(cacher, url); err != nil {
+						log.Print("can't enqueue url: ", url)
+					}
+				}(cacher, r.URL.String())
+				return
+			}
 		}
 		// Otherwise process with file handler
 		fs.ServeHTTP(w, r)

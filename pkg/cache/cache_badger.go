@@ -2,6 +2,7 @@ package cache
 
 import (
 	"log"
+	"time"
 
 	"github.com/dgraph-io/badger"
 )
@@ -13,6 +14,13 @@ type BadgerDBCache struct {
 func (b *BadgerDBCache) Set(k []byte, v []byte) error {
 	err := b.db.Update(func(txn *badger.Txn) error {
 		return txn.Set(k, v)
+	})
+	return err
+}
+
+func (b *BadgerDBCache) Setex(k []byte, ttl time.Duration, v []byte) error {
+	err := b.db.Update(func(txn *badger.Txn) error {
+		return txn.SetWithTTL(k, v, ttl)
 	})
 	return err
 }

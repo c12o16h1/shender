@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"testing"
 	"bytes"
+	"testing"
 )
 
 func TestNew(t *testing.T) {
@@ -28,9 +28,5 @@ func TestNew(t *testing.T) {
 
 	if err := c.Delete(key); err != nil {
 		t.Fatalf("Can't delete key")
-	}
-
-	if err := c.Close(); err != nil {
-		t.Fatalf("Can't close DB connection")
 	}
 }
