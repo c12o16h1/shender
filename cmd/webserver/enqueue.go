@@ -10,5 +10,5 @@ import (
 const ENQUEUE_EXPIRY_TIME = 24 * time.Hour
 
 func enqueue(cacher cache.Cacher, url string) error {
-	return cacher.Setex([]byte(models.KEY_ENQUEUE+url), ENQUEUE_EXPIRY_TIME, nil)
+	return cacher.Setex([]byte(models.PREFIX_ENQUEUE+url), ENQUEUE_EXPIRY_TIME, nil)
 }

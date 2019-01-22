@@ -18,6 +18,7 @@ type Cacher interface {
 	Set(k []byte, v []byte) error
 	Setex(k []byte, ttl time.Duration, v []byte) error
 	Get(k []byte) ([]byte, error)
+	Spop(prefix []byte, amount uint) ([][]byte, error)
 	Delete(k []byte) error
 	models.Closer
 }

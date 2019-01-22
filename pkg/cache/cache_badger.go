@@ -44,6 +44,27 @@ func (b *BadgerDBCache) Get(k []byte) ([]byte, error) {
 	return v, nil
 }
 
+func (b *BadgerDBCache) Spop(prefix []byte, amount uint) ([][]byte, error) {
+	var results [][]byte
+	err := b.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); len(results) <= int(amount) && it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			if len(k) > 0 {
+				results = append(results, k)
+			}
+
+		}
+		return nil
+	})
+
+	return results, err
+}
+
 func (b *BadgerDBCache) Delete(k []byte) error {
 	err := b.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete(k)

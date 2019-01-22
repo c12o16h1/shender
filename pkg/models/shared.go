@@ -1,7 +1,7 @@
 package models
 
 const (
-	KEY_ENQUEUE = "ENC:"
+	PREFIX_ENQUEUE = "ENC:"
 )
 
 var OK = "OK"

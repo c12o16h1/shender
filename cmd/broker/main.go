@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/config"
 	"github.com/c12o16h1/shender/pkg/models"
 	"github.com/gorilla/websocket"
@@ -17,12 +18,22 @@ import (
 func main() {
 	cfg := config.New()
 
+	cacher, err := cache.New(cfg.Cache)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cacher.Close()
+
+	// Enqueue URL to be posted to server
+	// So they'll be crawled
+	go enqueue(&cacher)
+
 	// Setup renderer queues
 	// Incoming queue is a queue for incoming Jobs,
 	// It have limited capacity and contain Jobs to process
 	// In case of channel is full client app will send "busy" signal to server
 	incomingQueue := make(chan models.Job, cfg.Main.IncomingQueueLimit)
-	ws()
+	//ws()
 
 	//Debug
 	//go func() {
