@@ -1,6 +1,7 @@
-package main
+package webserver
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -22,6 +23,26 @@ var (
 	dotByte           = "."[0] // byte for dot
 )
 
+func PickHandler(cacher cache.Cacher, fs http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If request fits requirements - process them with cache handler
+		if verifiedRequest(r) {
+			// Only if we have something in cache - show it and return
+			if body, err := isCached(cacher, r); err != nil {
+				w.Write(body)
+				// Spawn goroutine to enqueue crawling
+				go func(cacher cache.Cacher, url string) {
+					if err := enqueue(cacher, url); err != nil {
+						log.Print("can't enqueue url: ", url)
+					}
+				}(cacher, r.URL.String())
+				return
+			}
+		}
+		// Otherwise process with file handler
+		fs.ServeHTTP(w, r)
+	})
+}
 
 func verifiedRequest(r *http.Request) bool {
 	if isBot(r) && isHTML(r) && !isFile(r) {

@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -12,17 +14,23 @@ import (
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/config"
 	"github.com/c12o16h1/shender/pkg/models"
+	"github.com/c12o16h1/shender/pkg/webserver"
 	"github.com/gorilla/websocket"
 )
 
 func main() {
 	cfg := config.New()
-
+	// Create new Cacher connection
 	cacher, err := cache.New(cfg.Cache)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer cacher.Close()
+
+	//Create new fileserver
+	// Handler to serve files (common case)
+	fsHandler := http.FileServer(http.Dir(cfg.Main.Dir))
+
 
 	// Enqueue URL to be posted to server
 	// So they'll be crawled
@@ -44,9 +52,26 @@ func main() {
 	// It has some capacity, but it should not hit that limit ever,
 	// Limit exists only for emergency cases and to do not overflow memory limits
 	outgoingQueue := make(chan models.JobResult, cfg.Main.OutgoingQueueLimit)
+	// Run broker in goroutine
+	go run(incomingQueue, outgoingQueue)
 
-	run(incomingQueue, outgoingQueue)
+	// Web server
+	// Is a fast Go web-server with caching
+	// Which handle http requests and respond with static content (aka nginx),
+
+	// but for SE bots return cached (rendered) page content
+	if err := serve(cfg.Main, cacher, fsHandler); err != nil {
+		log.Fatal(err)
+	}
 }
+
+func serve(config *config.MainConfig, cacher cache.Cacher, fsHandler http.Handler) error {
+	http.Handle("/", webserver.PickHandler(cacher, fsHandler))
+	return http.ListenAndServe(fmt.Sprintf(":%d", config.Port), nil)
+}
+
+
+//Garbage
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
 
