@@ -31,7 +31,6 @@ func main() {
 
 	// Create new fileserver
 	// Handler to serve files (common case)
-	log.Print(cfg.Main.Dir)
 	fsHandler := http.FileServer(http.Dir(cfg.Main.Dir))
 
 	// Setup renderer queues
@@ -44,6 +43,15 @@ func main() {
 	// It has some capacity, but it should not hit that limit ever,
 	// Limit exists only for emergency cases and to do not overflow memory limits
 	outgoingQueue := make(chan models.JobResult, cfg.Main.OutgoingQueueLimit)
+
+	/*
+	Establishing WS connection to main server
+	 */
+	conn, _, err := websocket.DefaultDialer.Dial(cfg.Main.WSHost, nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+	defer conn.Close()
 
 
 	// Processing
@@ -68,7 +76,7 @@ func main() {
 	spawn new renderer instance, connect to them via RPC, and do render for URL from incoming queue.
 	Then save push result to outgoing queue
 	 */
-	go func(incoming chan <-models.Job, outgoing chan models.JobResult) {
+	go func(incoming chan<- models.Job, outgoing chan models.JobResult) {
 		for {
 			if err := broker.Run(incomingQueue, outgoingQueue); err != nil {
 				log.Print(err)
@@ -94,7 +102,7 @@ func main() {
 	no matter what - serving pages must proceed fine.
 	If this process cause any error - we have panic and recover procedure
 	 */
-	 // TODO: handle Panic by recover
+	// TODO: handle Panic by recover
 	if err := serve(cfg.Main, cacher, fsHandler); err != nil {
 		log.Panic(err)
 	}
@@ -118,12 +126,6 @@ func ws() {
 
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/echo"}
 	log.Printf("connecting to %s", u.String())
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
-	defer c.Close()
 
 	done := make(chan struct{})
 

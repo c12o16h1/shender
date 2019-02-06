@@ -1,22 +1,31 @@
 package broker
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/models"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/gorilla/websocket"
 )
 
-func Enqueue (cacher *cache.Cacher) error {
+const (
+	ENQUEUE_SLEEP_TIMEOUT time.Duration = 30 * time.Second
+)
+
+func Enqueue(cacher *cache.Cacher, conn *websocket.Conn) error {
 	for {
-		urls, err  := getURLs(*cacher, 5)
+		urls, err := getURLs(*cacher, 5)
 		if err != nil {
 			log.Print(err)
 		}
-		spew.Dump(urls)
-		time.Sleep(30 * time.Second)
+		for _, url := range urls {
+			if err := enqueueUrl(url, conn); err != nil {
+				return err
+			}
+		}
+		time.Sleep(ENQUEUE_SLEEP_TIMEOUT)
 	}
 }
 
@@ -31,4 +40,22 @@ func getURLs(cacher cache.Cacher, amount uint) ([]string, error) {
 		result = append(result, string(url))
 	}
 	return result, nil
+}
+
+func enqueueUrl(url string, conn *websocket.Conn) error {
+	msg := models.WSMessage{
+		Type:    models.TypeEnqueueURL,
+		Message: url,
+	}
+	b, err := json.Marshal(msg)
+	if err != nil {
+		log.Println("enqueueUrl: json.Marshal:", err)
+		return err
+	}
+	err = conn.WriteMessage(websocket.BinaryMessage, b)
+	if err != nil {
+		log.Println("enqueueUrl: write:", err)
+		return err
+	}
+	return nil
 }
