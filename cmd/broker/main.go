@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/c12o16h1/shender/pkg/broker"
 	"github.com/c12o16h1/shender/pkg/cache"
@@ -41,7 +42,8 @@ func main() {
 	/*
 	Establishing WS connection to main server
 	 */
-	conn, _, err := websocket.DefaultDialer.Dial(cfg.Main.WSHost, nil)
+	u := url.URL{Scheme: "ws", Host: cfg.Main.WSHost, Path: ""}
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
