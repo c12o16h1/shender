@@ -1,4 +1,4 @@
-package main
+package broker
 
 import (
 	"log"
@@ -9,7 +9,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-func enqueue (cacher *cache.Cacher) error {
+func Enqueue (cacher *cache.Cacher) error {
 	for {
 		urls, err  := getURLs(*cacher, 5)
 		if err != nil {

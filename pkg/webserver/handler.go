@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/c12o16h1/shender/pkg/cache"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 )
 
@@ -28,18 +27,24 @@ func PickHandler(cacher cache.Cacher, fs http.Handler) http.Handler {
 		// If request fits requirements - process them with cache handler
 		if verifiedRequest(r) {
 			// Only if we have something in cache - show it and return
-			if body, err := isCached(cacher, r); err != nil {
-				w.Write(body)
+			body, err := isCached(cacher, r)
+			if err != nil {
 				// Spawn goroutine to enqueue crawling
 				go func(cacher cache.Cacher, url string) {
 					if err := enqueue(cacher, url); err != nil {
 						log.Print("can't enqueue url: ", url)
 					}
 				}(cacher, r.URL.String())
+				// Process with file handler
+				fs.ServeHTTP(w, r)
 				return
 			}
+			// Show cached content
+			w.Write(body)
+			return
 		}
-		// Otherwise process with file handler
+		// Default process with file handler
+		log.Print("FC")
 		fs.ServeHTTP(w, r)
 	})
 }
@@ -52,7 +57,6 @@ func verifiedRequest(r *http.Request) bool {
 }
 
 func isCached(cacher cache.Cacher, r *http.Request) ([]byte, error,) {
-	spew.Dump(r.URL.String())
 	body, err := cacher.Get([]byte(r.URL.String()))
 	if err != nil || len(body) == 0 {
 		return nil, errors.Wrap(err, ERR_NOT_CACHED)

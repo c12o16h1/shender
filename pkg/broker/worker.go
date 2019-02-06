@@ -1,4 +1,4 @@
-package main
+package broker
 
 import (
 	"bytes"
@@ -30,7 +30,7 @@ const (
 	ERR_INVALID_WORKER = models.Error("Invalid worker")
 )
 
-func run(chJobs <-chan models.Job, chRes chan models.JobResult) error {
+func Run(chJobs <-chan models.Job, chRes chan models.JobResult) error {
 	var wg sync.WaitGroup
 	port := MIN_RENDEDER_PORT
 	limiter := make(chan struct{}, MAX_RENDERERS)
@@ -43,7 +43,6 @@ func run(chJobs <-chan models.Job, chRes chan models.JobResult) error {
 		if err := spawnRenderer(port); err != nil {
 			continue
 		}
-
 		go handleJob(wg, job, chRes, port, limiter)
 	}
 	return nil

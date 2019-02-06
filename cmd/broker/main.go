@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/c12o16h1/shender/pkg/broker"
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/config"
 	"github.com/c12o16h1/shender/pkg/models"
@@ -19,6 +20,7 @@ import (
 )
 
 func main() {
+	// Initialization
 	cfg := config.New()
 	// Create new Cacher connection
 	cacher, err := cache.New(cfg.Cache)
@@ -27,20 +29,55 @@ func main() {
 	}
 	defer cacher.Close()
 
-	//Create new fileserver
+	// Create new fileserver
 	// Handler to serve files (common case)
+	log.Print(cfg.Main.Dir)
 	fsHandler := http.FileServer(http.Dir(cfg.Main.Dir))
-
-
-	// Enqueue URL to be posted to server
-	// So they'll be crawled
-	go enqueue(&cacher)
 
 	// Setup renderer queues
 	// Incoming queue is a queue for incoming Jobs,
 	// It have limited capacity and contain Jobs to process
 	// In case of channel is full client app will send "busy" signal to server
 	incomingQueue := make(chan models.Job, cfg.Main.IncomingQueueLimit)
+
+	// Outgoing queue is queue of result of Jobs (rendered pages sources)
+	// It has some capacity, but it should not hit that limit ever,
+	// Limit exists only for emergency cases and to do not overflow memory limits
+	outgoingQueue := make(chan models.JobResult, cfg.Main.OutgoingQueueLimit)
+
+
+	// Processing
+	/*
+	Spawn goroutine to enqueue URL to central server
+	so they'll be crawled by other members.
+	Also this goroutine do not cause fatal or panic errors,
+	because it's not critically important.
+	Most important thing is webserver
+	*/
+	go func(c *cache.Cacher) {
+		for {
+			if err := broker.Enqueue(&cacher); err != nil {
+				log.Print(err)
+			}
+		}
+	}(&cacher)
+
+	/*
+	Spawn goroutine to process crawling of pages for other members of system.
+	This goroutine ensure that server has enough resources to do render,
+	spawn new renderer instance, connect to them via RPC, and do render for URL from incoming queue.
+	Then save push result to outgoing queue
+	 */
+	go func(incoming chan <-models.Job, outgoing chan models.JobResult) {
+		for {
+			if err := broker.Run(incomingQueue, outgoingQueue); err != nil {
+				log.Print(err)
+			}
+		}
+	}(incomingQueue, outgoingQueue)
+
+	// Testing part
+
 	//ws()
 
 	//Debug
@@ -48,20 +85,18 @@ func main() {
 	//	sampleIcomingQueue(incomingQueue)
 	//}()
 
-	// Outgoing queue is queue of result of Jobs (rendered pages sources)
-	// It has some capacity, but it should not hit that limit ever,
-	// Limit exists only for emergency cases and to do not overflow memory limits
-	outgoingQueue := make(chan models.JobResult, cfg.Main.OutgoingQueueLimit)
-	// Run broker in goroutine
-	go run(incomingQueue, outgoingQueue)
-
 	// Web server
 	// Is a fast Go web-server with caching
 	// Which handle http requests and respond with static content (aka nginx),
 
-	// but for SE bots return cached (rendered) page content
+	/*
+	That's most critical part of system,
+	no matter what - serving pages must proceed fine.
+	If this process cause any error - we have panic and recover procedure
+	 */
+	 // TODO: handle Panic by recover
 	if err := serve(cfg.Main, cacher, fsHandler); err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 }
 
@@ -69,7 +104,6 @@ func serve(config *config.MainConfig, cacher cache.Cacher, fsHandler http.Handle
 	http.Handle("/", webserver.PickHandler(cacher, fsHandler))
 	return http.ListenAndServe(fmt.Sprintf(":%d", config.Port), nil)
 }
-
 
 //Garbage
 
