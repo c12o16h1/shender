@@ -5,9 +5,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/models"
-	"github.com/gorilla/websocket"
 )
 
 const (

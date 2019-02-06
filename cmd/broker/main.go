@@ -64,7 +64,7 @@ func main() {
 	*/
 	go func(c *cache.Cacher) {
 		for {
-			if err := broker.Enqueue(&cacher); err != nil {
+			if err := broker.Enqueue(&cacher, conn); err != nil {
 				log.Print(err)
 			}
 		}
