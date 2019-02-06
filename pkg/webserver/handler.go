@@ -34,7 +34,7 @@ func PickHandler(cacher cache.Cacher, fs http.Handler) http.Handler {
 					if err := enqueue(cacher, url); err != nil {
 						log.Print("can't enqueue url: ", url)
 					}
-				}(cacher, r.URL.String())
+				}(cacher, urlFromRequest(r))
 				// Process with file handler
 				fs.ServeHTTP(w, r)
 				return
@@ -57,7 +57,7 @@ func verifiedRequest(r *http.Request) bool {
 }
 
 func isCached(cacher cache.Cacher, r *http.Request) ([]byte, error,) {
-	body, err := cacher.Get([]byte(r.URL.String()))
+	body, err := cacher.Get([]byte(urlFromRequest(r)))
 	if err != nil || len(body) == 0 {
 		return nil, errors.Wrap(err, ERR_NOT_CACHED)
 	}
@@ -109,5 +109,8 @@ func isFile(r *http.Request) bool {
 		extension = string(r.RequestURI[i]) + extension
 	}
 	return false
+}
 
+func urlFromRequest(r *http.Request) string {
+	return r.Host + r.RequestURI
 }

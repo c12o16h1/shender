@@ -15,6 +15,10 @@ const (
 	ENQUEUE_SLEEP_TIMEOUT time.Duration = 30 * time.Second
 )
 
+var (
+	prefixLen = len(models.PREFIX_ENQUEUE) // (len(PREFIX_ENQUEUE) - 1) + 1 (for semicolon)
+)
+
 func Enqueue(cacher *cache.Cacher, conn *websocket.Conn) error {
 	for {
 		urls, err := getURLs(*cacher, 5)
@@ -22,6 +26,8 @@ func Enqueue(cacher *cache.Cacher, conn *websocket.Conn) error {
 			log.Print(err)
 		}
 		for _, url := range urls {
+			// remove PREFIX_ENQUEUE
+			url = url[prefixLen:]
 			if err := enqueueUrl(url, conn); err != nil {
 				return err
 			}
