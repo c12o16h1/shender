@@ -1,20 +1,16 @@
 package main
 
 import (
-"fmt"
-"log"
-"net/http"
+	"fmt"
+	"log"
+	"net/http"
 
-
-
-
-"github.com/c12o16h1/shender/pkg/broker"
-"github.com/c12o16h1/shender/pkg/cache"
-"github.com/c12o16h1/shender/pkg/config"
-"github.com/c12o16h1/shender/pkg/models"
-"github.com/c12o16h1/shender/pkg/webserver"
-"github.com/gorilla/websocket"
-
+	"github.com/c12o16h1/shender/pkg/broker"
+	"github.com/c12o16h1/shender/pkg/cache"
+	"github.com/c12o16h1/shender/pkg/config"
+	"github.com/c12o16h1/shender/pkg/models"
+	"github.com/c12o16h1/shender/pkg/webserver"
+	"github.com/gorilla/websocket"
 )
 
 func main() {
@@ -67,9 +63,17 @@ func main() {
 		}
 	}(&cacher, conn)
 
-	go func() {
-
-	}()
+	/*
+	Spawn goroutine to listen messages from server
+	And properly handle them
+	 */
+	go func(wsc *websocket.Conn, incoming chan models.Job) {
+		for {
+			if err := broker.Listen(conn, incomingQueue); err != nil {
+				log.Print(err)
+			}
+		}
+	}(conn, incomingQueue)
 
 	/*
 	Spawn goroutine to process crawling of pages for other members of system.
@@ -87,16 +91,10 @@ func main() {
 
 	// Testing part
 
-	//ws()
-
 	//Debug
 	//go func() {
 	//	sampleIcomingQueue(incomingQueue)
 	//}()
-
-	// Web server
-	// Is a fast Go web-server with caching
-	// Which handle http requests and respond with static content (aka nginx),
 
 	/*
 	That's most critical part of system,
