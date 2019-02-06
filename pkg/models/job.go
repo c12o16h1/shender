@@ -6,13 +6,12 @@ const (
 )
 
 type Job struct {
-	Token       string `json:"token"`
-	Url         string `json:"url"`
-	CallbackURL string `json:"callback_url"`
+	Token string `json:"token"`
+	Url   string `json:"url"`
 }
 
 type JobResult struct {
 	Job
-	HTML string
+	HTML   string
 	Status uint8
 }

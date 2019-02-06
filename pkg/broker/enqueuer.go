@@ -45,7 +45,7 @@ func getURLs(cacher cache.Cacher, amount uint) ([]string, error) {
 
 func enqueueUrl(url string, conn *websocket.Conn) error {
 	msg := models.WSMessage{
-		Type:    models.TypeEnqueueURL,
+		Type:    models.TypeRequestEnqueueURL,
 		Message: url,
 	}
 	b, err := json.Marshal(msg)
