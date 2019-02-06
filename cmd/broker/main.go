@@ -62,13 +62,13 @@ func main() {
 	because it's not critically important.
 	Most important thing is webserver
 	*/
-	go func(c *cache.Cacher) {
+	go func(c *cache.Cacher, wsc *websocket.Conn) {
 		for {
 			if err := broker.Enqueue(&cacher, conn); err != nil {
 				log.Print(err)
 			}
 		}
-	}(&cacher)
+	}(&cacher, conn)
 
 	/*
 	Spawn goroutine to process crawling of pages for other members of system.
