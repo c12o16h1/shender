@@ -34,6 +34,9 @@ func main() {
 	// In case of channel is full client app will send "busy" signal to server
 	incomingQueue := make(chan models.Job, cfg.Main.IncomingQueueLimit)
 
+	// Chan to pause request to get new urls for crawling
+	incomingSleeper := make(chan int64, 1)
+
 	// Outgoing queue is queue of result of Jobs (rendered pages sources)
 	// It has some capacity, but it should not hit that limit ever,
 	// Limit exists only for emergency cases and to do not overflow memory limits
@@ -51,7 +54,7 @@ func main() {
 
 	// Processing
 	/*
-	Spawn goroutine to enqueue URL to central server
+	Spawn goroutine to send/enqueue URL to central server
 	so they'll be crawled by other members.
 	Also this goroutine do not cause fatal or panic errors,
 	because it's not critically important.
@@ -59,23 +62,35 @@ func main() {
 	*/
 	go func(c *cache.Cacher, wsc *websocket.Conn) {
 		for {
-			if err := broker.Enqueue(&cacher, conn); err != nil {
+			if err := broker.SendURLs(&cacher, conn); err != nil {
 				log.Print(err)
 			}
 		}
 	}(&cacher, conn)
 
 	/*
-	Spawn goroutine to listen messages from server
-	And properly handle them
-	 */
-	go func(wsc *websocket.Conn, incoming chan models.Job) {
+	Spawn goroutine to get URLs for crawling from server
+	so they'll be crawled by this app.
+	*/
+	go func(c *cache.Cacher, sleeperCh chan int64, wsc *websocket.Conn) {
 		for {
-			if err := broker.Listen(conn, incomingQueue); err != nil {
+			if err := broker.Request(incomingQueue, sleeperCh, conn); err != nil {
 				log.Print(err)
 			}
 		}
-	}(conn, incomingQueue)
+	}(&cacher, incomingSleeper, conn)
+
+	/*
+	Spawn goroutine to listen messages from server
+	And properly handle them
+	 */
+	go func(wsc *websocket.Conn, incoming chan models.Job, sleeperCh chan int64,) {
+		for {
+			if err := broker.Listen(conn, incomingQueue, sleeperCh); err != nil {
+				log.Print(err)
+			}
+		}
+	}(conn, incomingQueue, incomingSleeper)
 
 	/*
 	Spawn goroutine to process crawling of pages for other members of system.
@@ -85,8 +100,8 @@ func main() {
 	 */
 	go func(incoming chan<- models.Job, outgoing chan models.JobResult) {
 		for {
-			if err := broker.Run(incomingQueue, outgoingQueue); err != nil {
-				log.Print(err)
+			if err := broker.Crawl(incomingQueue, outgoingQueue); err != nil {
+				log.Print("Crawl: ", err)
 			}
 		}
 	}(incomingQueue, outgoingQueue)

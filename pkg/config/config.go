@@ -10,7 +10,7 @@ import (
 const (
 	DEFAULT_PORT                 uint16 = 80
 	DEFAULT_DIR                  string = "./www"
-	DEFAULT_INCOMING_QUEUE_LIMIT uint   = 10
+	DEFAULT_INCOMING_QUEUE_LIMIT uint   = 20
 	DEFAULT_OUTGOING_QUEUE_LIMIT uint   = 100
 	DEFAULT_WS_HOST                     = "localhost:8080"
 

@@ -11,4 +11,4 @@ rm -f ./bin/render
 go build -o ./bin/render ./cmd/render
 
 # Run
-PORT=3000 ./bin/broker && fg
+PORT=3000 ./bin/broker

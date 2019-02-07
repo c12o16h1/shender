@@ -3,6 +3,7 @@ package broker
 import (
 	"encoding/json"
 	"log"
+	"strconv"
 
 	"github.com/c12o16h1/shender/pkg/models"
 	"github.com/gorilla/websocket"
@@ -12,7 +13,7 @@ const (
 	ERR_INVALID_URL_MESSAGE = models.Error("Invalid message or token for add URL to crawl")
 )
 
-func Listen(conn *websocket.Conn, jobs chan models.Job) error {
+func Listen(conn *websocket.Conn, jobs chan models.Job, sleeperCh chan int64) error {
 	for {
 		// Listen and read
 		_, message, err := conn.ReadMessage()
@@ -37,6 +38,16 @@ func Listen(conn *websocket.Conn, jobs chan models.Job) error {
 				jobs <- j
 			} else {
 				log.Print(ERR_INVALID_URL_MESSAGE)
+			}
+		case models.TypeSleeperGetUrls:
+			// Sleep if channel is free
+			if len(sleeperCh) < cap(sleeperCh){
+				i, err := strconv.ParseInt(m.Message, 10, 64)
+				if err != nil {
+					log.Print(err)
+					continue
+				}
+				sleeperCh <- i
 			}
 		}
 		log.Printf("recv: %s", message)

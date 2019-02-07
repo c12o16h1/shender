@@ -5,10 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/gorilla/websocket"
-
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/models"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -18,8 +17,11 @@ const (
 var (
 	prefixLen = len(models.PREFIX_ENQUEUE) // (len(PREFIX_ENQUEUE) - 1) + 1 (for semicolon)
 )
-
-func Enqueue(cacher *cache.Cacher, conn *websocket.Conn) error {
+/*
+Function to send app URL to server
+ */
+func SendURLs(cacher *cache.Cacher, conn *websocket.Conn) error {
+	// SendURLs our URL to push into server
 	for {
 		urls, err := getURLs(*cacher, 5)
 		if err != nil {
@@ -51,7 +53,7 @@ func getURLs(cacher cache.Cacher, amount uint) ([]string, error) {
 
 func enqueueUrl(url string, conn *websocket.Conn) error {
 	msg := models.WSMessage{
-		Type:    models.TypeRequestEnqueueURL,
+		Type:    models.TypeRequestSendURL,
 		Message: url,
 	}
 	b, err := json.Marshal(msg)

@@ -18,20 +18,21 @@ const (
 )
 
 func main() {
-	port := flag.Uint("port", 0, "this binary port")
+	port := flag.Int("port", 0, "this binary port")
 	flag.Parse()
 	if *port == 0 {
 		log.Fatal(ERR_INVALID_PORT)
 	}
 
-	w, _ := NewWorker()
+	w, _ := NewWorker(*port - 10000, *port - 9999)
 	// Close worker anyway if after some time
 	go func() {
 		time.Sleep(WORKER_LIFE_TIME)
-		w.Close(0)
+		var out string
+		w.Close(0, &out)
 	}()
 	rpc.Register(w)
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
 	if err != nil {
 		fmt.Println(err)
 		return
