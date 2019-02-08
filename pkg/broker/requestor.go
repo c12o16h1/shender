@@ -14,14 +14,14 @@ const (
 	RECEIVE_SLEEP_TIMEOUT time.Duration = 100 * time.Millisecond
 )
 
-func Request(jobsCh chan models.Job, sleeperChan <-chan int64, conn *websocket.Conn) error {
+func Request(jobsCh chan models.Job, sleeperChan <-chan int64, sleepTime *time.Duration, conn *websocket.Conn) error {
 	jobsEmptyTrigger := cap(jobsCh) / 2
 	// Request new urls to crawl
 	for {
 		select {
-		case sleep := <-sleeperChan:
+		case <-sleeperChan:
 			// Sleep
-			time.Sleep(time.Duration(sleep) * time.Second)
+			time.Sleep(*sleepTime)
 		default:
 			// If we have not enough URL to crawl
 			if len(jobsCh) < jobsEmptyTrigger {

@@ -3,7 +3,6 @@ package broker
 import (
 	"encoding/json"
 	"log"
-	"strconv"
 
 	"github.com/c12o16h1/shender/pkg/models"
 	"github.com/gorilla/websocket"
@@ -13,7 +12,7 @@ const (
 	ERR_INVALID_URL_MESSAGE = models.Error("Invalid message or token for add URL to crawl")
 )
 
-func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperCh chan<- int64) error {
+func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperRequestGetUrls chan<- int64, sleeperResponseCachedPage chan<- int64, sleeperTypeRequestSendURL chan<- int64) error {
 	for {
 		// Listen and read
 		_, message, err := conn.ReadMessage()
@@ -39,16 +38,23 @@ func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperCh chan<- int64
 			} else {
 				log.Print(ERR_INVALID_URL_MESSAGE)
 			}
-		case models.TypeSleeperGetUrls:
-			// Sleep if channel is free
-			if len(sleeperCh) < cap(sleeperCh) {
-				i, err := strconv.ParseInt(m.Message, 10, 64)
-				if err != nil {
-					log.Print(err)
-					continue
+		case models.TypeError:
+			switch m.Code {
+			case models.CodeRequestGetUrls:
+				if len(sleeperRequestGetUrls) < cap(sleeperRequestGetUrls) {
+					sleeperRequestGetUrls <- 0
 				}
-				sleeperCh <- i
+			case models.CodeResponseCachedPage:
+				if len(sleeperResponseCachedPage) < cap(sleeperResponseCachedPage) {
+					sleeperResponseCachedPage <- 0
+				}
+			case models.CodeRequestSendURL:
+				if len(sleeperTypeRequestSendURL) < cap(sleeperTypeRequestSendURL) {
+					sleeperTypeRequestSendURL <- 0
+				}
 			}
+			// Sleep if channel is free
+
 		}
 		log.Printf("recv: %s", message)
 	}

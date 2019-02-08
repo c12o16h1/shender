@@ -21,21 +21,28 @@ var (
 /*
 Function to send app URL to server
  */
-func Enqueue(cacher *cache.Cacher, conn *websocket.Conn) error {
+func Enqueue(cacher *cache.Cacher, conn *websocket.Conn, sleeperCh <-chan int64, sleepTime *time.Duration) error {
 	// Enqueue our URL to push into server
 	for {
-		urls, err := getURLs(*cacher, 5)
-		if err != nil {
-			log.Print(err)
-		}
-		for _, url := range urls {
-			// remove PREFIX_ENQUEUE
-			url = url[prefixLen:]
-			if err := enqueueUrl(url, conn); err != nil {
-				return err
+		select {
+		case <-sleeperCh:
+			// Sleep
+			time.Sleep(*sleepTime)
+		default:
+			urls, err := getURLs(*cacher, 5)
+			if err != nil {
+				log.Print(err)
 			}
+			for _, url := range urls {
+				// remove PREFIX_ENQUEUE
+				url = url[prefixLen:]
+				if err := enqueueUrl(url, conn); err != nil {
+					return err
+				}
+			}
+			time.Sleep(ENQUEUE_SLEEP_TIMEOUT)
 		}
-		time.Sleep(ENQUEUE_SLEEP_TIMEOUT)
+
 	}
 }
 
