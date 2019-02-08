@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/c12o16h1/shender/pkg/models"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-
-	"github.com/c12o16h1/shender/pkg/models"
 )
 
 const (
 	RECEIVE_SLEEP_TIMEOUT time.Duration = 100 * time.Millisecond
 )
 
-func Request(jobsCh chan models.Job, sleeperChan <-chan int64, sleepTime *time.Duration, conn *websocket.Conn) error {
+/*
+Requests new URLS to crawl
+ */
+func Request(conn *websocket.Conn, jobsCh chan models.Job, sleeperChan <-chan int64, sleepTime *time.Duration) error {
 	jobsEmptyTrigger := cap(jobsCh) / 2
 	// Request new urls to crawl
 	for {
@@ -38,8 +40,6 @@ func Request(jobsCh chan models.Job, sleeperChan <-chan int64, sleepTime *time.D
 				}
 			}
 		}
-
-
 		time.Sleep(RECEIVE_SLEEP_TIMEOUT)
 	}
 }

@@ -19,7 +19,7 @@ var (
 	prefixLen = len(models.PREFIX_ENQUEUE) // (len(PREFIX_ENQUEUE) - 1) + 1 (for semicolon)
 )
 /*
-Function to send app URL to server
+Enqueuer sends app URL to server to enqueue to be crawled
  */
 func Enqueue(cacher *cache.Cacher, conn *websocket.Conn, sleeperCh <-chan int64, sleepTime *time.Duration) error {
 	// Enqueue our URL to push into server

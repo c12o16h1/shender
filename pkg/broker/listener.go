@@ -10,9 +10,21 @@ import (
 
 const (
 	ERR_INVALID_URL_MESSAGE = models.Error("Invalid message or token for add URL to crawl")
+	ERR_INVALID_CACHE       = models.Error("Invalid cache content")
 )
 
-func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperRequestGetUrls chan<- int64, sleeperResponseCachedPage chan<- int64, sleeperTypeRequestSendURL chan<- int64) error {
+/*
+Listener listen all messages from server
+ */
+func Listen(
+	conn *websocket.Conn,
+	jobsCh chan<- models.Job,
+	storagerCh chan<- models.DataResponseCachedPage,
+	sleeperRequestGetUrls chan<- int64,
+	sleeperResponseCachedPage chan<- int64,
+	sleeperTypeRequestSendURL chan<- int64,
+	sleeperRequestCachedPage chan<- int64,
+) error {
 	for {
 		// Listen and read
 		_, message, err := conn.ReadMessage()
@@ -28,17 +40,35 @@ func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperRequestGetUrls 
 
 		switch m.Type {
 		case models.TypeResponseGetUrls:
-			if len(m.Message) > 0 && len(m.Token) > 0 {
+			// Got URL to crawl
+			if len(m.Message) > 0 && len(m.AppID) > 0 {
+				var urlRich models.URLRich
+				if err := json.Unmarshal([]byte(m.Data), &urlRich); err != nil {
+					log.Print(ERR_INVALID_URL_MESSAGE)
+					continue
+				}
 				j := models.Job{
 					Token: m.Token,
-					Url:   m.Message,
+					AppID: urlRich.AppID,
+					Url:   urlRich.Url,
 				}
 				// Add to channel
-				jobs <- j
+				jobsCh <- j
 			} else {
 				log.Print(ERR_INVALID_URL_MESSAGE)
 			}
+
+		case models.TypeResponseCachedPage:
+			// Got cache to store
+			var c models.DataResponseCachedPage
+			if err := json.Unmarshal([]byte(m.Data), &c); err != nil {
+				log.Print(ERR_INVALID_CACHE)
+				continue
+			}
+			storagerCh <- c
+
 		case models.TypeError:
+			// Handle errors
 			switch m.Code {
 			case models.CodeRequestGetUrls:
 				if len(sleeperRequestGetUrls) < cap(sleeperRequestGetUrls) {
@@ -52,8 +82,11 @@ func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperRequestGetUrls 
 				if len(sleeperTypeRequestSendURL) < cap(sleeperTypeRequestSendURL) {
 					sleeperTypeRequestSendURL <- 0
 				}
+			case models.CodeRequestCachedPage:
+				if len(sleeperRequestCachedPage) < cap(sleeperRequestCachedPage) {
+					sleeperRequestCachedPage <- 0
+				}
 			}
-			// Sleep if channel is free
 
 		}
 		log.Printf("recv: %s", message)

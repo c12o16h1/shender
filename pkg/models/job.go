@@ -8,6 +8,7 @@ const (
 type Job struct {
 	Token string `json:"token"`
 	Url   string `json:"url"`
+	AppID string `json:"app_id"`
 }
 
 type JobResult struct {

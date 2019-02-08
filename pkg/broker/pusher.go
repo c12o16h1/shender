@@ -12,7 +12,7 @@ import (
 /*
 Pushes crawled page cache to server
  */
-func Push(chRes <-chan models.JobResult, conn *websocket.Conn, sleeperCh <-chan int64, sleepTime *time.Duration) error {
+func Push(conn *websocket.Conn, chRes <-chan models.JobResult, sleeperCh <-chan int64, sleepTime *time.Duration) error {
 	for {
 		select {
 		case <-sleeperCh:
@@ -32,7 +32,7 @@ func Push(chRes <-chan models.JobResult, conn *websocket.Conn, sleeperCh <-chan 
 			msg := models.WSMessage{
 				Type:    models.TypeResponseCachedPage,
 				Message: res.Url,        // URL of crawled page
-				Token:   res.Token,      // Job token
+				AppID:   res.AppID,      // Job token
 				Data:    string(dBytes), // Bytes of custom payload
 			}
 			b, err := json.Marshal(msg)

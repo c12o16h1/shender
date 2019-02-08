@@ -36,6 +36,9 @@ var (
 	port      = MIN_RENDEDER_PORT
 )
 
+/*
+Crawler crawl websites pages and get cache from them
+ */
 func Crawl(chJobs <-chan models.Job, chRes chan<- models.JobResult) error {
 	var wg sync.WaitGroup
 	var mtx sync.Mutex
