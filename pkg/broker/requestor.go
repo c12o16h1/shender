@@ -2,10 +2,10 @@ package broker
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 
 	"github.com/c12o16h1/shender/pkg/models"
 )
@@ -14,7 +14,7 @@ const (
 	RECEIVE_SLEEP_TIMEOUT time.Duration = 100 * time.Millisecond
 )
 
-func Request(jobsCh chan models.Job, sleeperChan chan int64, conn *websocket.Conn) error {
+func Request(jobsCh chan models.Job, sleeperChan <-chan int64, conn *websocket.Conn) error {
 	jobsEmptyTrigger := cap(jobsCh) / 2
 	// Request new urls to crawl
 	for {
@@ -30,13 +30,11 @@ func Request(jobsCh chan models.Job, sleeperChan chan int64, conn *websocket.Con
 				}
 				b, err := json.Marshal(msg)
 				if err != nil {
-					log.Println("enqueueUrl: json.Marshal:", err)
-					return err
+					return errors.Wrap(err, "enqueueUrl: json.Marshal:")
 				}
 				err = conn.WriteMessage(websocket.BinaryMessage, b)
 				if err != nil {
-					log.Println("enqueueUrl: write:", err)
-					return err
+					return errors.Wrap(err, "enqueueUrl: write:")
 				}
 			}
 		}

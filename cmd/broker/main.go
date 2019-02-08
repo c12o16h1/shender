@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/c12o16h1/shender/pkg/broker"
 	"github.com/c12o16h1/shender/pkg/cache"
@@ -13,6 +14,8 @@ import (
 	"github.com/c12o16h1/shender/pkg/webserver"
 	"github.com/gorilla/websocket"
 )
+
+const DEFAULT_SLEEPER = 1 * time.Second
 
 func main() {
 	// Initialization
@@ -53,41 +56,61 @@ func main() {
 	defer conn.Close()
 
 	// Processing
+
 	/*
-	Spawn goroutine to send/enqueue URL to central server
-	so they'll be crawled by other members.
-	Also this goroutine do not cause fatal or panic errors,
-	because it's not critically important.
-	Most important thing is webserver
-	*/
-	go func(c *cache.Cacher, wsc *websocket.Conn) {
-		for {
-			if err := broker.SendURLs(&cacher, conn); err != nil {
-				log.Print(err)
-			}
-		}
-	}(&cacher, conn)
+	Spawn crawl-oriented goroutines.
+	This Goroutines should not cause application exit in any obstacles,
+	because them isn't critically important.
+	Most important thing is webserver.
+	 */
 
 	/*
 	Spawn goroutine to get URLs for crawling from server
 	so they'll be crawled by this app.
 	*/
-	go func(c *cache.Cacher, sleeperCh chan int64, wsc *websocket.Conn) {
+	go func(c *cache.Cacher, sleeperCh <-chan int64, wsc *websocket.Conn) {
 		for {
 			if err := broker.Request(incomingQueue, sleeperCh, conn); err != nil {
 				log.Print(err)
+				time.Sleep(DEFAULT_SLEEPER)
 			}
 		}
 	}(&cacher, incomingSleeper, conn)
 
 	/*
-	Spawn goroutine to listen messages from server
+	Spawn goroutine to push content of crawled pages to server
+	*/
+	go func(resChan <-chan models.JobResult, wsc *websocket.Conn) {
+		for {
+			if err := broker.Push(resChan, conn); err != nil {
+				log.Print(err)
+				time.Sleep(DEFAULT_SLEEPER)
+			}
+		}
+	}(outgoingQueue, conn)
+
+	/*
+	Spawn goroutine to send/enqueue URL to central server
+	so they'll be crawled by other members.
+	*/
+	go func(c *cache.Cacher, wsc *websocket.Conn) {
+		for {
+			if err := broker.Enqueue(&cacher, conn); err != nil {
+				log.Print(err)
+				time.Sleep(DEFAULT_SLEEPER)
+			}
+		}
+	}(&cacher, conn)
+
+	/*
+	Spawn goroutine to listen all messages from server
 	And properly handle them
 	 */
-	go func(wsc *websocket.Conn, incoming chan models.Job, sleeperCh chan int64,) {
+	go func(wsc *websocket.Conn, incoming chan<- models.Job, sleeperCh chan<- int64, ) {
 		for {
 			if err := broker.Listen(conn, incomingQueue, sleeperCh); err != nil {
 				log.Print(err)
+				time.Sleep(DEFAULT_SLEEPER)
 			}
 		}
 	}(conn, incomingQueue, incomingSleeper)
@@ -98,10 +121,11 @@ func main() {
 	spawn new renderer instance, connect to them via RPC, and do render for URL from incoming queue.
 	Then save push result to outgoing queue
 	 */
-	go func(incoming chan<- models.Job, outgoing chan models.JobResult) {
+	go func(incoming <-chan models.Job, outgoing chan<- models.JobResult) {
 		for {
 			if err := broker.Crawl(incomingQueue, outgoingQueue); err != nil {
 				log.Print("Crawl: ", err)
+				time.Sleep(DEFAULT_SLEEPER)
 			}
 		}
 	}(incomingQueue, outgoingQueue)

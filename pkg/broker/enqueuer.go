@@ -8,6 +8,7 @@ import (
 	"github.com/c12o16h1/shender/pkg/cache"
 	"github.com/c12o16h1/shender/pkg/models"
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -20,8 +21,8 @@ var (
 /*
 Function to send app URL to server
  */
-func SendURLs(cacher *cache.Cacher, conn *websocket.Conn) error {
-	// SendURLs our URL to push into server
+func Enqueue(cacher *cache.Cacher, conn *websocket.Conn) error {
+	// Enqueue our URL to push into server
 	for {
 		urls, err := getURLs(*cacher, 5)
 		if err != nil {
@@ -58,13 +59,11 @@ func enqueueUrl(url string, conn *websocket.Conn) error {
 	}
 	b, err := json.Marshal(msg)
 	if err != nil {
-		log.Println("enqueueUrl: json.Marshal:", err)
-		return err
+		return errors.Wrap(err, "enqueueUrl: json.Marshal:")
 	}
 	err = conn.WriteMessage(websocket.BinaryMessage, b)
 	if err != nil {
-		log.Println("enqueueUrl: write:", err)
-		return err
+		return errors.Wrap(err, "enqueueUrl: write:")
 	}
 	return nil
 }

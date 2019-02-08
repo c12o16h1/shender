@@ -13,7 +13,7 @@ const (
 	ERR_INVALID_URL_MESSAGE = models.Error("Invalid message or token for add URL to crawl")
 )
 
-func Listen(conn *websocket.Conn, jobs chan models.Job, sleeperCh chan int64) error {
+func Listen(conn *websocket.Conn, jobs chan<- models.Job, sleeperCh chan<- int64) error {
 	for {
 		// Listen and read
 		_, message, err := conn.ReadMessage()
@@ -41,7 +41,7 @@ func Listen(conn *websocket.Conn, jobs chan models.Job, sleeperCh chan int64) er
 			}
 		case models.TypeSleeperGetUrls:
 			// Sleep if channel is free
-			if len(sleeperCh) < cap(sleeperCh){
+			if len(sleeperCh) < cap(sleeperCh) {
 				i, err := strconv.ParseInt(m.Message, 10, 64)
 				if err != nil {
 					log.Print(err)

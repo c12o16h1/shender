@@ -25,8 +25,8 @@ const (
 	MAX_RENDERERS = 10 // Max amount of alive workers
 
 	// Port range to run renderer workers
-	MIN_RENDEDER_PORT int = 53500
-	MAX_RENDEDER_PORT int = 53750
+	MIN_RENDEDER_PORT int = 52500
+	MAX_RENDEDER_PORT int = 57750
 
 	ERR_INVALID_WORKER = models.Error("Invalid worker")
 )
@@ -36,7 +36,7 @@ var (
 	port      = MIN_RENDEDER_PORT
 )
 
-func Crawl(chJobs <-chan models.Job, chRes chan models.JobResult) error {
+func Crawl(chJobs <-chan models.Job, chRes chan<- models.JobResult) error {
 	var wg sync.WaitGroup
 	var mtx sync.Mutex
 	limiter := make(chan struct{}, MAX_RENDERERS)
@@ -68,7 +68,7 @@ func Crawl(chJobs <-chan models.Job, chRes chan models.JobResult) error {
 }
 
 // Goroutine to take job and port for worker, and process them
-func handleJob(mtx sync.Mutex, wg sync.WaitGroup, j models.Job, chRes chan models.JobResult, port int, limiter <-chan struct{}) {
+func handleJob(mtx sync.Mutex, wg sync.WaitGroup, j models.Job, chRes chan<- models.JobResult, port int, limiter <-chan struct{}) {
 	wg.Add(1)
 	result := models.JobResult{
 		Status: models.JobFailed,
@@ -84,8 +84,6 @@ func handleJob(mtx sync.Mutex, wg sync.WaitGroup, j models.Job, chRes chan model
 		delete(busyPorts, port)
 		mtx.Unlock()
 	}()
-
-	log.Print("ENQ:", port, ":", j.Url)
 
 	time.Sleep(1 * time.Second) // wait for renderer
 
@@ -144,7 +142,7 @@ func nextPort(current int) int {
 	p := current
 
 	for {
-		p += 1
+		p += 2
 		if current < MAX_RENDEDER_PORT {
 			if _, ok := busyPorts[p]; !ok {
 				// Check that port is free
@@ -193,6 +191,8 @@ func chromePorts(port int) []int {
 	}
 }
 
+
+// Checks that port is free
 // True for free port
 func isFreePort(p int) bool {
 	conn, _ := net.Dial("tcp", net.JoinHostPort("127.0.0.1", string(p)))
