@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	RECEIVE_SLEEP_TIMEOUT time.Duration = 100 * time.Millisecond
+	WS_BUMP_TIMEOUT time.Duration = 1000 * time.Millisecond
 )
 
 /*
 Requests new URLS to crawl
  */
-func Request(conn *websocket.Conn, jobsCh chan models.Job, sleeperChan <-chan int64, sleepTime *time.Duration) error {
+func Request(conn *models.WSConn, jobsCh chan models.Job, sleeperChan <-chan int64, sleepTime *time.Duration) error {
 	jobsEmptyTrigger := cap(jobsCh) / 2
 	// Request new urls to crawl
 	for {
@@ -32,14 +32,14 @@ func Request(conn *websocket.Conn, jobsCh chan models.Job, sleeperChan <-chan in
 				}
 				b, err := json.Marshal(msg)
 				if err != nil {
-					return errors.Wrap(err, "enqueueUrl: json.Marshal:")
+					return errors.Wrap(err, "Request: json.Marshal:")
 				}
 				err = conn.WriteMessage(websocket.BinaryMessage, b)
 				if err != nil {
-					return errors.Wrap(err, "enqueueUrl: write:")
+					return errors.Wrap(err, "Request: write:")
 				}
 			}
 		}
-		time.Sleep(RECEIVE_SLEEP_TIMEOUT)
+		time.Sleep(WS_BUMP_TIMEOUT)
 	}
 }

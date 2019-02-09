@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/c12o16h1/shender/pkg/models"
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -17,7 +16,7 @@ const (
 Listener listen all messages from server
  */
 func Listen(
-	conn *websocket.Conn,
+	conn *models.WSConn,
 	jobsCh chan<- models.Job,
 	storagerCh chan<- models.DataResponseCachedPage,
 	sleeperRequestGetUrls chan<- int64,
@@ -41,7 +40,7 @@ func Listen(
 		switch m.Type {
 		case models.TypeResponseGetUrls:
 			// Got URL to crawl
-			if len(m.Message) > 0 && len(m.AppID) > 0 {
+			if len(m.Data) > 0 {
 				var urlRich models.URLRich
 				if err := json.Unmarshal([]byte(m.Data), &urlRich); err != nil {
 					log.Print(ERR_INVALID_URL_MESSAGE)

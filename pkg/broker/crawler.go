@@ -45,9 +45,9 @@ func Crawl(chJobs <-chan models.Job, chRes chan<- models.JobResult) error {
 	limiter := make(chan struct{}, MAX_RENDERERS)
 	go func() {
 		for {
-			log.Print("LIMITER:", len(limiter), cap(limiter))
-			log.Print("JOBS:", len(chJobs), cap(chJobs))
-			log.Print("JOBRES:", len(chRes), cap(chRes))
+			//log.Print("LIMITER:", len(limiter), cap(limiter))
+			//log.Print("JOBS:", len(chJobs), cap(chJobs))
+			//log.Print("JOBRES:", len(chRes), cap(chRes))
 			time.Sleep(1 * time.Second)
 		}
 	}()

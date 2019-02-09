@@ -21,7 +21,7 @@ var (
 /*
 Enqueuer sends app URL to server to enqueue to be crawled
  */
-func Enqueue(cacher *cache.Cacher, conn *websocket.Conn, sleeperCh <-chan int64, sleepTime *time.Duration) error {
+func Enqueue(cacher *cache.Cacher, conn *models.WSConn, appID string, sleeperCh <-chan int64, sleepTime *time.Duration) error {
 	// Enqueue our URL to push into server
 	for {
 		select {
@@ -36,7 +36,7 @@ func Enqueue(cacher *cache.Cacher, conn *websocket.Conn, sleeperCh <-chan int64,
 			for _, url := range urls {
 				// remove PREFIX_ENQUEUE
 				url = url[prefixLen:]
-				if err := enqueueUrl(url, conn); err != nil {
+				if err := enqueueUrl(url, appID, conn); err != nil {
 					return err
 				}
 			}
@@ -59,10 +59,19 @@ func getURLs(cacher cache.Cacher, amount uint) ([]string, error) {
 	return result, nil
 }
 
-func enqueueUrl(url string, conn *websocket.Conn) error {
+func enqueueUrl(url string, appID string, conn *models.WSConn) error {
+	urlRich := models.URLRich{
+		Url:   url,
+		AppID: appID,
+	}
+	bUrl, err := json.Marshal(urlRich)
+	if err != nil {
+		return errors.Wrap(err, "enqueueUrl: json.Marshal:")
+	}
+
 	msg := models.WSMessage{
-		Type:    models.TypeRequestSendURL,
-		Message: url,
+		Type: models.TypeRequestSendURL,
+		Data: string(bUrl),
 	}
 	b, err := json.Marshal(msg)
 	if err != nil {

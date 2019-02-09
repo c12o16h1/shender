@@ -69,6 +69,7 @@ func (b *BadgerDBCache) Spop(prefix []byte, amount uint) ([][]byte, error) {
 			return txn.Delete(k)
 		})
 		if err != nil {
+			log.Print("Badger: Spop: Unable to delete keys")
 			return results, err
 		}
 		// Assign only deleted rows

@@ -2,6 +2,7 @@ package broker
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/c12o16h1/shender/pkg/cache"
@@ -13,7 +14,7 @@ import (
 /*
 RequestCache requests new URLs to crawl
  */
-func RequestCache(conn *websocket.Conn, sleeperChan <-chan int64, sleepTime *time.Duration) error {
+func RequestCache(conn *models.WSConn, appID string, sleeperChan <-chan int64, sleepTime *time.Duration, renewWS chan<- int) error {
 	// Request new urls to crawl
 	for {
 		select {
@@ -22,7 +23,8 @@ func RequestCache(conn *websocket.Conn, sleeperChan <-chan int64, sleepTime *tim
 			time.Sleep(*sleepTime)
 		default:
 			msg := models.WSMessage{
-				Type: models.TypeRequestCachedPage,
+				Type:  models.TypeRequestCachedPage,
+				AppID: appID,
 			}
 			b, err := json.Marshal(msg)
 			if err != nil {
@@ -30,10 +32,13 @@ func RequestCache(conn *websocket.Conn, sleeperChan <-chan int64, sleepTime *tim
 			}
 			err = conn.WriteMessage(websocket.BinaryMessage, b)
 			if err != nil {
+				// ASk to renew WS connection
+				log.Print("RENEW WS")
+				renewWS <- 0
 				return errors.Wrap(err, "RequestCache: write:")
 			}
 		}
-		time.Sleep(RECEIVE_SLEEP_TIMEOUT)
+		time.Sleep(WS_BUMP_TIMEOUT)
 	}
 }
 
