@@ -12,12 +12,12 @@ import (
 /*
 Pushes crawled page cache to server
  */
-func Push(conn *models.WSConn, chRes <-chan models.JobResult, sleeperCh <-chan int64, sleepTime *time.Duration) error {
+func Push(conn *models.WSConn, chRes <-chan models.JobResult, sleeperCh <-chan time.Duration) error {
 	for {
 		select {
-		case <-sleeperCh:
+		case sleepTime := <-sleeperCh:
 			// Sleep
-			time.Sleep(*sleepTime)
+			time.Sleep(sleepTime)
 		default:
 			res := <-chRes
 

@@ -3,6 +3,8 @@ package broker
 import (
 	"encoding/json"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/c12o16h1/shender/pkg/models"
 )
@@ -19,10 +21,10 @@ func Listen(
 	conn *models.WSConn,
 	jobsCh chan<- models.Job,
 	storagerCh chan<- models.DataResponseCachedPage,
-	sleeperRequestGetUrls chan<- int64,
-	sleeperResponseCachedPage chan<- int64,
-	sleeperTypeRequestSendURL chan<- int64,
-	sleeperRequestCachedPage chan<- int64,
+	sleeperRequestGetUrls chan<- time.Duration,
+	sleeperResponseCachedPage chan<- time.Duration,
+	sleeperTypeRequestSendURL chan<- time.Duration,
+	sleeperRequestCachedPage chan<- time.Duration,
 ) error {
 	for {
 		// Listen and read
@@ -71,19 +73,40 @@ func Listen(
 			switch m.Code {
 			case models.CodeRequestGetUrls:
 				if len(sleeperRequestGetUrls) < cap(sleeperRequestGetUrls) {
-					sleeperRequestGetUrls <- 0
+					// Listen server for reconnect timeout
+					t, err := strconv.Atoi(m.Message)
+					if err != nil || t == 0 {
+						sleeperRequestGetUrls <- WS_ERROR_TIMEOUT
+						continue
+					}
+					sleeperRequestGetUrls <- time.Duration(t) * time.Second
 				}
 			case models.CodeResponseCachedPage:
 				if len(sleeperResponseCachedPage) < cap(sleeperResponseCachedPage) {
-					sleeperResponseCachedPage <- 0
+					t, err := strconv.Atoi(m.Message)
+					if err != nil || t == 0 {
+						sleeperResponseCachedPage <- WS_ERROR_TIMEOUT
+						continue
+					}
+					sleeperResponseCachedPage <- time.Duration(t) * time.Second
 				}
 			case models.CodeRequestSendURL:
 				if len(sleeperTypeRequestSendURL) < cap(sleeperTypeRequestSendURL) {
-					sleeperTypeRequestSendURL <- 0
+					t, err := strconv.Atoi(m.Message)
+					if err != nil || t == 0 {
+						sleeperTypeRequestSendURL <- WS_ERROR_TIMEOUT
+						continue
+					}
+					sleeperTypeRequestSendURL <- time.Duration(t) * time.Second
 				}
 			case models.CodeRequestCachedPage:
 				if len(sleeperRequestCachedPage) < cap(sleeperRequestCachedPage) {
-					sleeperRequestCachedPage <- 0
+					t, err := strconv.Atoi(m.Message)
+					if err != nil || t == 0 {
+						sleeperRequestCachedPage <- WS_ERROR_TIMEOUT
+						continue
+					}
+					sleeperRequestCachedPage <- time.Duration(t) * time.Second
 				}
 			}
 

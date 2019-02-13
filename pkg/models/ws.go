@@ -4,7 +4,7 @@ type WSMessage struct {
 	Code    int    `json:"code"`    // Code, for errors
 	Type    WSType `json:"type"`    // Type of message
 	AppID   string `json:"app_id"`  // AppID of "owner" app
-	Token   string `json:"token"`  // Unique token
+	Token   string `json:"token"`   // Unique token
 	Error   string `json:"error"`   // Error message
 	Message string `json:"message"` // Success message
 	Data    string `json:"data"`    // Any specific payload

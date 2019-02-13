@@ -14,13 +14,13 @@ import (
 /*
 RequestCache requests new URLs to crawl
  */
-func RequestCache(conn *models.WSConn, appID string, sleeperChan <-chan int64, sleepTime *time.Duration, renewWS chan<- int) error {
+func RequestCache(conn *models.WSConn, appID string, sleeperChan <-chan time.Duration, renewWS chan<- int) error {
 	// Request new urls to crawl
 	for {
 		select {
-		case <-sleeperChan:
+		case sleepTime := <-sleeperChan:
 			// Sleep
-			time.Sleep(*sleepTime)
+			time.Sleep(sleepTime)
 		default:
 			msg := models.WSMessage{
 				Type:  models.TypeRequestCachedPage,
@@ -45,7 +45,7 @@ func RequestCache(conn *models.WSConn, appID string, sleeperChan <-chan int64, s
 /*
 Storing cache in local cache DB
  */
-func Storage(c *cache.Cacher, storagerCh <-chan models.DataResponseCachedPage, sleeperChan chan<- int64) error {
+func Storage(c *cache.Cacher, storagerCh <-chan models.DataResponseCachedPage, sleeperChan chan<- time.Duration) error {
 	for {
 		ch := <-storagerCh
 		if err := (*c).Set([]byte(ch.URL), []byte(ch.HTML)); err != nil {

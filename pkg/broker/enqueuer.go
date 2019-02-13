@@ -21,13 +21,13 @@ var (
 /*
 Enqueuer sends app URL to server to enqueue to be crawled
  */
-func Enqueue(cacher *cache.Cacher, conn *models.WSConn, appID string, sleeperCh <-chan int64, sleepTime *time.Duration) error {
+func Enqueue(cacher *cache.Cacher, conn *models.WSConn, appID string, sleeperCh <-chan time.Duration) error {
 	// Enqueue our URL to push into server
 	for {
 		select {
-		case <-sleeperCh:
+		case sleepTime := <-sleeperCh:
 			// Sleep
-			time.Sleep(*sleepTime)
+			time.Sleep(sleepTime)
 		default:
 			urls, err := getURLs(*cacher, 5)
 			if err != nil {

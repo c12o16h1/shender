@@ -17,8 +17,7 @@ import (
 
 var (
 	shortSleeper = 1 * time.Second
-	sleeper      = 30 * time.Second
-)
+	)
 
 func main() {
 	// Initialization
@@ -51,13 +50,13 @@ func main() {
 
 	// Sleeper channels to pause in execution in some routines in case of error
 	// Chan to pause request to get new urls for crawling
-	sleeperRequestGetUrls := make(chan int64, 1)
+	sleeperRequestGetUrls := make(chan time.Duration, 1)
 	// Chan to pause request to push crawled content
-	sleeperResponseCachedPage := make(chan int64, 1)
+	sleeperResponseCachedPage := make(chan time.Duration, 1)
 	// Chan to pause request to enqueue urls to be crawled
-	sleeperTypeRequestSendURL := make(chan int64, 1)
+	sleeperTypeRequestSendURL := make(chan time.Duration, 1)
 	// Chan to pause request to get cached pages from server
-	sleeperRequestCachedPage := make(chan int64, 1)
+	sleeperRequestCachedPage := make(chan time.Duration, 1)
 
 	// Service channels
 	// Channel to trigger renew of websockets
@@ -95,13 +94,6 @@ func main() {
 	// Intially create websockets conn
 	renewWebsockets <- 0
 
-	// Maintain ws connection and reconnect on fail
-	go func() {
-		for {
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
 	// Processing
 
 	/*
@@ -115,7 +107,7 @@ func main() {
    Spawn goroutine to listen all messages from server
    And properly handle them
 	*/
-	go func(incoming chan<- models.Job, sleeperCh chan<- int64, ) {
+	go func() {
 		for {
 			// Wait and go next loop if ws is unhealthy
 			if wsc == nil {
@@ -136,14 +128,14 @@ func main() {
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(incomingQueue, sleeperRequestGetUrls)
+	}()
 
 	// Other Apps pages crawling
 	/*
 	Spawn goroutine to get URLs for crawling from server
 	so they'll be crawled by this app.
 	*/
-	go func(sleeperCh <-chan int64) {
+	go func() {
 		for {
 			// Wait and go next loop if ws is unhealthy
 			if wsc == nil {
@@ -151,12 +143,12 @@ func main() {
 				log.Print("wsc is nil")
 				continue
 			}
-			if err := broker.Request(wsc, incomingQueue, sleeperCh, &sleeper); err != nil {
+			if err := broker.Request(wsc, incomingQueue, sleeperRequestGetUrls); err != nil {
 				log.Print(err)
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(sleeperRequestGetUrls)
+	}()
 
 	/*
 	Spawn goroutine to process crawling of pages for other members of system.
@@ -164,19 +156,19 @@ func main() {
 	spawn new renderer instance, connect to them via RPC, and do render for URL from incoming queue.
 	Then save push result to outgoing queue
 	 */
-	go func(incoming <-chan models.Job, outgoing chan<- models.JobResult) {
+	go func() {
 		for {
 			if err := broker.Crawl(incomingQueue, outgoingQueue); err != nil {
 				log.Print("Crawl: ", err)
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(incomingQueue, outgoingQueue)
+	}()
 
 	/*
 	Spawn goroutine to push content of crawled pages to server
 	*/
-	go func(resChan <-chan models.JobResult, sleeperCh <-chan int64) {
+	go func() {
 		for {
 			// Wait and go next loop if ws is unhealthy
 			if wsc == nil {
@@ -184,19 +176,19 @@ func main() {
 				log.Print("wsc is nil")
 				continue
 			}
-			if err := broker.Push(wsc, resChan, sleeperCh, &sleeper); err != nil {
+			if err := broker.Push(wsc, outgoingQueue, sleeperResponseCachedPage); err != nil {
 				log.Print(err)
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(outgoingQueue, sleeperResponseCachedPage)
+	}()
 
 	// This App cache
 	/*
 	Spawn goroutine to send/enqueue URL to central server
 	so they'll be crawled by other members.
 	*/
-	go func(c *cache.Cacher, sleeperCh <-chan int64) {
+	go func() {
 		for {
 			// Wait and go next loop if ws is unhealthy
 			if wsc == nil {
@@ -204,18 +196,18 @@ func main() {
 				log.Print("wsc is nil")
 				continue
 			}
-			if err := broker.Enqueue(&cacher, wsc, appID, sleeperCh, &sleeper); err != nil {
+			if err := broker.Enqueue(&cacher, wsc, appID, sleeperTypeRequestSendURL); err != nil {
 				log.Print(err)
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(&cacher, sleeperTypeRequestSendURL)
+	}()
 
 	/*
 	Spawn goroutine to get cached pages from central server
 	so bots may see cached pages content
 	*/
-	go func(sleeperCh <-chan int64) {
+	go func() {
 		for {
 			// Wait and go next loop if ws is unhealthy
 			if wsc == nil {
@@ -223,25 +215,25 @@ func main() {
 				log.Print("wsc is nil")
 				continue
 			}
-			if err := broker.RequestCache(wsc, appID, sleeperCh, &sleeper, renewWebsockets); err != nil {
+			if err := broker.RequestCache(wsc, appID, sleeperRequestCachedPage, renewWebsockets); err != nil {
 				log.Print(err)
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(sleeperRequestCachedPage)
+	}()
 
 	/*
 	Spawn goroutine to save cache in local cache DB
 	so bots may see cached pages content
 	*/
-	go func(c *cache.Cacher, storagerCh <-chan models.DataResponseCachedPage, sleeperCh <-chan int64) {
+	go func() {
 		for {
-			if err := broker.Storage(c, storagerCh, sleeperRequestCachedPage); err != nil {
+			if err := broker.Storage(&cacher, storagerQueue, sleeperRequestCachedPage); err != nil {
 				log.Print(err)
 				time.Sleep(shortSleeper)
 			}
 		}
-	}(&cacher, storagerQueue, sleeperRequestCachedPage)
+	}()
 
 	// Testing part
 
