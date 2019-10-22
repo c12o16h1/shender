@@ -20,9 +20,9 @@ type Worker struct {
 }
 
 // Spawn new worker instance
-func NewWorker() (*Worker, error) {
+func NewWorker(start int, end int) (*Worker, error) {
 	ctxt, cancel := context.WithCancel(context.Background())
-	c, err := chromedp.NewPool()
+	c, err := chromedp.NewPool(chromedp.PortRange(start, end))
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +37,10 @@ func NewWorker() (*Worker, error) {
 }
 
 // Very basic worker function to get page source
-func (w *Worker) Close(sig int) {
+func (w *Worker) Close(sig int, out *string) error {
 	w.worker.Shutdown()
 	os.Exit(sig)
+	return nil
 }
 
 // Very basic worker function to get page source
@@ -54,8 +55,9 @@ func (w *Worker) Render(url string, html *string) error {
 }
 
 // Check that worker is alive
-func (w *Worker) Heartbeat() string {
-	return models.OK
+func (w *Worker) Heartbeat(in string, out *string) error {
+	*out = models.OK
+	return nil
 }
 
 func renderTasks(url string, body *string) chromedp.Tasks {

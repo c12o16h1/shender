@@ -2,6 +2,7 @@ package cache
 
 import (
 	"log"
+	"time"
 
 	"github.com/dgraph-io/badger"
 )
@@ -13,6 +14,13 @@ type BadgerDBCache struct {
 func (b *BadgerDBCache) Set(k []byte, v []byte) error {
 	err := b.db.Update(func(txn *badger.Txn) error {
 		return txn.Set(k, v)
+	})
+	return err
+}
+
+func (b *BadgerDBCache) Setex(k []byte, ttl time.Duration, v []byte) error {
+	err := b.db.Update(func(txn *badger.Txn) error {
+		return txn.SetWithTTL(k, v, ttl)
 	})
 	return err
 }
@@ -34,6 +42,41 @@ func (b *BadgerDBCache) Get(k []byte) ([]byte, error) {
 		return nil, err
 	}
 	return v, nil
+}
+
+func (b *BadgerDBCache) Spop(prefix []byte, amount uint) ([][]byte, error) {
+	var results [][]byte
+	// Populate
+	var populated [][]byte
+	err := b.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); len(populated) <= int(amount) && it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			k := item.Key()
+			if len(k) > 0 {
+				populated = append(populated, k)
+			}
+
+		}
+		return nil
+	})
+	// Delete
+	for _, k := range populated {
+		err := b.db.Update(func(txn *badger.Txn) error {
+			return txn.Delete(k)
+		})
+		if err != nil {
+			log.Print("Badger: Spop: Unable to delete keys")
+			return results, err
+		}
+		// Assign only deleted rows
+		results = append(results, k)
+	}
+
+	return results, err
 }
 
 func (b *BadgerDBCache) Delete(k []byte) error {

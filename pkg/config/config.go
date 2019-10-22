@@ -10,11 +10,11 @@ import (
 const (
 	DEFAULT_PORT                 uint16 = 80
 	DEFAULT_DIR                  string = "./www"
-	DEFAULT_INCOMING_QUEUE_LIMIT uint   = 10
+	DEFAULT_INCOMING_QUEUE_LIMIT uint   = 20
 	DEFAULT_OUTGOING_QUEUE_LIMIT uint   = 100
+	DEFAULT_WS_HOST                     = "localhost:8080"
 
 	DEFAULT_CACHE_TYPE string = "badgerdb"
-
 )
 
 // As this would be global config for "microservices" in one app,
@@ -40,6 +40,7 @@ type MainConfig struct {
 	Dir                string `json:"dir"`
 	IncomingQueueLimit uint   `json:"incoming_queue_limit"`
 	OutgoingQueueLimit uint   `json:"outgoing_queue_limit"`
+	WSHost             string `json:"ws_host"`
 }
 
 func (c *MainConfig) Configure() {
@@ -47,6 +48,7 @@ func (c *MainConfig) Configure() {
 	c.Dir = DEFAULT_DIR
 	c.IncomingQueueLimit = DEFAULT_INCOMING_QUEUE_LIMIT
 	c.OutgoingQueueLimit = DEFAULT_OUTGOING_QUEUE_LIMIT
+	c.WSHost = DEFAULT_WS_HOST
 
 	if port := os.Getenv("PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil && p > 0 {
@@ -67,6 +69,10 @@ func (c *MainConfig) Configure() {
 		if l, err := strconv.Atoi(oql); err == nil && l > 0 {
 			c.IncomingQueueLimit = uint(l)
 		}
+	}
+
+	if h := os.Getenv("WS_HOST"); h != "" {
+		c.Dir = h
 	}
 }
 
